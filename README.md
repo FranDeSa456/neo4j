@@ -61,4 +61,8 @@ La documentazione interattiva è disponibile su http://127.0.0.1:8000/docs
 | `POST`   | `/students`                 | Crea uno studente (body: `name`, `age`) |
 | `DELETE` | `/students/{name}`          | Elimina uno studente                    |
 | `GET`    | `/courses`                  | Lista tutti i corsi                     |
+| `POST`   | `/courses`                  | Crea un corso (body: `name`, `hours`)   |
+| `DELETE` | `/courses/{name}`           | Elimina un corso                        |
 | `GET`    | `/courses/{course}/students`| Studenti iscritti a un corso            |
+| `POST`   | `/courses/{course}/students/{name}`  | Iscrivi uno studente a un corso |
+| `DELETE` | `/courses/{course}/students/{name}`  | Rimuovi l'iscrizione            |

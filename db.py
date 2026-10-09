@@ -83,6 +83,48 @@ def list_courses():
     return [record.data() for record in records]
 
 
+def get_course(name):
+    records, _, _ = get_driver().execute_query(
+        """
+        MATCH (c:Course {name: $name})
+        RETURN c.name AS name, c.hours AS hours
+        """,
+        name=name,
+        database_=DATABASE,
+    )
+    return records[0].data() if records else None
+
+
+def _create_course(tx, name, hours):
+    tx.run(
+        "CREATE (:Course {name: $name, hours: $hours})",
+        name=name,
+        hours=hours,
+    )
+
+
+def create_course(name, hours):
+    with get_driver().session(database=DATABASE) as session:
+        session.execute_write(_create_course, name, hours)
+
+
+def _delete_course(tx, name):
+    result = tx.run(
+        """
+        MATCH (c:Course {name: $name})
+        DETACH DELETE c
+        RETURN count(*) AS deleted
+        """,
+        name=name,
+    )
+    return result.single()["deleted"]
+
+
+def delete_course(name):
+    with get_driver().session(database=DATABASE) as session:
+        return session.execute_write(_delete_course, name)
+
+
 def students_of_course(course):
     records, _, _ = get_driver().execute_query(
         """

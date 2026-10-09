@@ -56,9 +56,21 @@ def delete_student(name: str):
 def list_courses():
     return db.list_courses()
 
+@app.post("/courses", status_code=201)
+def create_course(payload: CourseIn):
+    if db.get_course(payload.name) is not None:
+        raise HTTPException(status_code=409, detail="Course already exists")
+    db.create_course(payload.name, payload.hours)
+    return {"name": payload.name, "hours": payload.hours}
+
 @app.get("/courses/{course}/students")
 def students_of_course(course: str):
     return db.students_of_course(course)
+
+@app.delete("/courses/{name}", status_code=204)
+def delete_course(name: str):
+    if db.delete_course(name) == 0:
+        raise HTTPException(status_code=404, detail="Course not found")
 
 @app.post("/courses/{course}/students/{name}", status_code=201)
 def enroll_student(course: str, name: str):
