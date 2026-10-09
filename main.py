@@ -59,3 +59,17 @@ def list_courses():
 @app.get("/courses/{course}/students")
 def students_of_course(course: str):
     return db.students_of_course(course)
+
+@app.post("/courses/{course}/students/{name}", status_code=201)
+def enroll_student(course: str, name: str):
+    status = db.enroll_student(name, course)
+    if status == "not_found":
+        raise HTTPException(status_code=404, detail="Student or course not found")
+    if status == "exists":
+        raise HTTPException(status_code=409, detail="Student already enrolled in course")
+    return {"student": name, "course": course}
+
+@app.delete("/courses/{course}/students/{name}", status_code=204)
+def unenroll_student(course: str, name: str):
+    if db.unenroll_student(name, course) == 0:
+        raise HTTPException(status_code=404, detail="Enrollment not found")

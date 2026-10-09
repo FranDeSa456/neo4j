@@ -94,3 +94,53 @@ def students_of_course(course):
         database_=DATABASE,
     )
     return [record.data() for record in records]
+
+
+def _enroll_student(tx, student, course):
+    result = tx.run(
+        """
+        MATCH (s:Student {name: $student})
+        MATCH (c:Course {name: $course})
+        RETURN EXISTS { (s)-[:ENROLLED_IN]->(c) } AS already_enrolled
+        """,
+        student=student,
+        course=course,
+    )
+    record = result.single()
+    if record is None:
+        return "not_found"
+    if record["already_enrolled"]:
+        return "exists"
+    tx.run(
+        """
+        MATCH (s:Student {name: $student})
+        MATCH (c:Course {name: $course})
+        CREATE (s)-[:ENROLLED_IN]->(c)
+        """,
+        student=student,
+        course=course,
+    )
+    return "created"
+
+
+def enroll_student(student, course):
+    with get_driver().session(database=DATABASE) as session:
+        return session.execute_write(_enroll_student, student, course)
+
+
+def _unenroll_student(tx, student, course):
+    result = tx.run(
+        """
+        MATCH (:Student {name: $student})-[r:ENROLLED_IN]->(:Course {name: $course})
+        DELETE r
+        RETURN count(*) AS deleted
+        """,
+        student=student,
+        course=course,
+    )
+    return result.single()["deleted"]
+
+
+def unenroll_student(student, course):
+    with get_driver().session(database=DATABASE) as session:
+        return session.execute_write(_unenroll_student, student, course)
