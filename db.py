@@ -41,34 +41,26 @@ def get_student(name):
     return records[0].data() if records else None
 
 
-def _create_student(tx, name, age):
-    tx.run(
+def create_student(name, age):
+    get_driver().execute_query(
         "CREATE (:Student {name: $name, age: $age})",
         name=name,
         age=age,
+        database_=DATABASE,
     )
 
 
-def create_student(name, age):
-    with get_driver().session(database=DATABASE) as session:
-        session.execute_write(_create_student, name, age)
-
-
-def _delete_student(tx, name):
-    result = tx.run(
+def delete_student(name):
+    records, _, _ = get_driver().execute_query(
         """
         MATCH (s:Student {name: $name})
         DETACH DELETE s
         RETURN count(*) AS deleted
         """,
         name=name,
+        database_=DATABASE,
     )
-    return result.single()["deleted"]
-
-
-def delete_student(name):
-    with get_driver().session(database=DATABASE) as session:
-        return session.execute_write(_delete_student, name)
+    return records[0]["deleted"] if records else 0
 
 
 def list_courses():
@@ -95,34 +87,26 @@ def get_course(name):
     return records[0].data() if records else None
 
 
-def _create_course(tx, name, hours):
-    tx.run(
+def create_course(name, hours):
+    get_driver().execute_query(
         "CREATE (:Course {name: $name, hours: $hours})",
         name=name,
         hours=hours,
+        database_=DATABASE,
     )
 
 
-def create_course(name, hours):
-    with get_driver().session(database=DATABASE) as session:
-        session.execute_write(_create_course, name, hours)
-
-
-def _delete_course(tx, name):
-    result = tx.run(
+def delete_course(name):
+    records, _, _ = get_driver().execute_query(
         """
         MATCH (c:Course {name: $name})
         DETACH DELETE c
         RETURN count(*) AS deleted
         """,
         name=name,
+        database_=DATABASE,
     )
-    return result.single()["deleted"]
-
-
-def delete_course(name):
-    with get_driver().session(database=DATABASE) as session:
-        return session.execute_write(_delete_course, name)
+    return records[0]["deleted"] if records else 0
 
 
 def students_of_course(course):
@@ -138,40 +122,28 @@ def students_of_course(course):
     return [record.data() for record in records]
 
 
-def _enroll_student(tx, student, course):
-    result = tx.run(
+def enroll_student(student, course):
+    records, _, _ = get_driver().execute_query(
         """
         MATCH (s:Student {name: $student})
         MATCH (c:Course {name: $course})
-        RETURN EXISTS { (s)-[:ENROLLED_IN]->(c) } AS already_enrolled
+        OPTIONAL MATCH (s)-[old:ENROLLED_IN]->(c)
+        MERGE (s)-[r:ENROLLED_IN]->(c)
+        RETURN old IS NOT NULL AS already_enrolled
         """,
         student=student,
         course=course,
+        database_=DATABASE,
     )
-    record = result.single()
-    if record is None:
+    if not records:
         return "not_found"
-    if record["already_enrolled"]:
+    if records[0]["already_enrolled"]:
         return "exists"
-    tx.run(
-        """
-        MATCH (s:Student {name: $student})
-        MATCH (c:Course {name: $course})
-        CREATE (s)-[:ENROLLED_IN]->(c)
-        """,
-        student=student,
-        course=course,
-    )
     return "created"
 
 
-def enroll_student(student, course):
-    with get_driver().session(database=DATABASE) as session:
-        return session.execute_write(_enroll_student, student, course)
-
-
-def _unenroll_student(tx, student, course):
-    result = tx.run(
+def unenroll_student(student, course):
+    records, _, _ = get_driver().execute_query(
         """
         MATCH (:Student {name: $student})-[r:ENROLLED_IN]->(:Course {name: $course})
         DELETE r
@@ -179,10 +151,6 @@ def _unenroll_student(tx, student, course):
         """,
         student=student,
         course=course,
+        database_=DATABASE,
     )
-    return result.single()["deleted"]
-
-
-def unenroll_student(student, course):
-    with get_driver().session(database=DATABASE) as session:
-        return session.execute_write(_unenroll_student, student, course)
+    return records[0]["deleted"] if records else 0
